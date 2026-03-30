@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 30px;
+            }
+
+            .container {
+                padding: 30px;
+                max-width: 700px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            body {
+                padding: 12px;
+            }
+
+            .container {
+                padding: 16px;
+                border-radius: 12px;
+            }
+        }
+
+        .cooldown-timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .cooldown-timer.show {
+            display: block;
+        }
+
+        .idle-timer {
+            background: #e7f3ff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .idle-timer span:first-child {
+            color: #0066cc;
+        }
+
+        .idle-timer .idle-time {
+            font-weight: 600;
+            color: #dc3545;
+        }
+
+        .login-container {
+            text-align: center;
+        }
+
+        .login-container h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .login-container p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 25px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .config-panel {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .config-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .config-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .config-item label {
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+            min-width: 70px;
+            white-space: nowrap;
+        }
+
+        .config-item input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .config-item input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .auto-save-hint {
+            font-size: 10px;
+            color: #28a745;
+            text-align: right;
+            margin-top: 2px;
+            margin-bottom: 8px;
+        }
+
+        .input-section {
+            margin-bottom: 12px;
+        }
+
+        .input-section label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 6px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+            font-size: 13px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .history-section {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-section h3 {
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item {
+            padding: 6px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 11px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-time {
+            color: #999;
+            font-size: 10px;
+        }
+
+        .history-text {
+            color: #333;
+            word-break: break-all;
+            margin-top: 3px;
+        }
+
+        .clear-history-btn {
+            background: #6c757d;
+            padding: 4px 10px;
+            font-size: 11px;
+            width: auto;
+            border-radius: 6px;
+        }
+
+        .confirm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .confirm-modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            width: 85%;
+            max-width: 350px;
+        }
+
+        .confirm-modal-content h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .confirm-modal-content .message-preview {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 14px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .confirm-modal-content .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .confirm-modal-content .button-group button {
+            flex: 1;
+            margin: 0;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+        }
+
+        .security-note {
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 登录界面 -->
+    <div id="loginPage" class="container login-container" style="display: flex;">
+        <div style="width: 100%;">
+            <div class="login-header">
+                <h1>📨 计算器</h1>
+                <p>请输入密码访问</p>
+            </div>
+            <input type="password" id="loginPassword" class="login-input" placeholder="请输入登录密码" autocomplete="off">
+            <button id="loginBtn">登录</button>
+            <div id="loginError" class="login-error">密码错误，请重试</div>
+            <div class="security-note" style="margin-top: 20px;">
+                🔒 密码验证通过后才能使用 | 5分钟无操作自动退出
+            </div>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div id="mainPage" class="container" style="display: none;">
+        <div id="cooldownTimer" class="cooldown-timer">
+            ⏱️ 请等待 <span id="cooldownSeconds">0</span> 秒
+        </div>
+
+        <div id="idleTimerBar" class="idle-timer" style="display: none;">
+            <span>⏰ 闲置自动退出倒计时：</span>
+            <span class="idle-time" id="idleCountdown">--:--</span>
+        </div>
+
+        <div class="config-panel">
+            <div class="config-item">
+                <label>🔑 Bot Token：</label>
+                <input type="password" id="botToken" placeholder="请输入 Bot Token" autocomplete="off">
+            </div>
+            <div class="auto-save-hint" id="tokenHint"></div>
+            <div class="config-item">
+                <label>💬 Chat ID：</label>
+                <input type="text" id="chatId" placeholder="请输入 Chat ID" autocomplete="off">
+            </div>
+            <div class="auto-save-hint" id="chatIdHint"></div>
+        </div>
+
+        <div class="input-section">
+            <label for="message">📝 计算内容：</label>
+            <textarea id="message" placeholder="请输入要发送的计算...（Ctrl+Enter 快速发送）" maxlength="4096"></textarea>
+            <div class="char-count"><span id="charCount">0</span> / 4096 字符</div>
+            <button id="sendBtn">🚀 发送计算量</button>
+        </div>
+
+        <div id="statusMsg" class="status"></div>
+
+        <div class="history-section">
+            <h3>
+                📜 发送历史记录
+                <button id="clearHistoryBtn" class="clear-history-btn">清空历史</button>
+            </h3>
+            <div id="historyList">
+                <div style="color: #999; text-align: center; padding: 15px;">暂无发送记录</div>
+            </div>
+        </div>
+
+        <div class="security-note">
+            🔒 凭证仅保存在当前会话 | 5分钟无操作自动退出 | 关闭页面自动清除
+        </div>
+    </div>
+
+    <script>
+        // ==================== 安全配置 ====================
+
+        const LOGIN_PASSWORD_HASH = 'd0297949ced965d1d2ad8288bbaea944800030fc94e44780d6996de9f67aef14';
+
+        // API 地址  
+        const API_BASE_ENCODED = 'aHR0cHM6Ly9hcGkudGVsZWdyYW0ub3JnL2JvdA==';
+
+        const RATE_LIMIT_SECONDS = 10;
+        const MAX_LOGIN_ATTEMPTS = 5;
+        const LOCKOUT_MINUTES = 10;
+        const IDLE_TIMEOUT_MINUTES = 5;
+
+        // 解码 API 地址
+        function getApiBase() {
+            return atob(API_BASE_ENCODED);
+        }
+
+        // ==================== 全局变量 ====================
+        let sendHistory = [];
+        let lastSendTime = 0;
+        let cooldownInterval = null;
+        let isLoggedIn = false;
+        let loginFailedAttempts = 0;
+        let loginLockoutUntil = 0;
+
+        let idleCountdownInterval = null;
+        let lastActivityTime = Date.now();
+
+        // DOM 元素
+        const loginPage = document.getElementById('loginPage');
+        const mainPage = document.getElementById('mainPage');
+        const loginPassword = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+
+        const botTokenInput = document.getElementById('botToken');
+        const chatIdInput = document.getElementById('chatId');
+        const sendBtn = document.getElementById('sendBtn');
+        const messageInput = document.getElementById('message');
+        const statusMsg = document.getElementById('statusMsg');
+        const charCountSpan = document.getElementById('charCount');
+        const historyListDiv = document.getElementById('historyList');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const cooldownTimerDiv = document.getElementById('cooldownTimer');
+        const cooldownSecondsSpan = document.getElementById('cooldownSeconds');
+        const tokenHint = document.getElementById('tokenHint');
+        const chatIdHint = document.getElementById('chatIdHint');
+        const idleTimerBar = document.getElementById('idleTimerBar');
+        const idleCountdownSpan = document.getElementById('idleCountdown');
+
+        // ==================== SHA-256 哈希函数 ====================
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // ==================== 闲置自动退出功能 ====================
+        function resetIdleTimer() {
+            lastActivityTime = Date.now();
+            updateIdleDisplay();
+            if (idleCountdownInterval) clearInterval(idleCountdownInterval);
+            startIdleCountdown();
+        }
+
+        function startIdleCountdown() {
+            if (idleCountdownInterval) clearInterval(idleCountdownInterval);
+
+            idleCountdownInterval = setInterval(() => {
+                if (!isLoggedIn) return;
+
+                const elapsed = (Date.now() - lastActivityTime) / 1000;
+                const remaining = IDLE_TIMEOUT_MINUTES * 60 - elapsed;
+
+                if (remaining <= 0) {
+                    clearInterval(idleCountdownInterval);
+                    idleCountdownInterval = null;
+                    autoLogout();
+                } else {
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = Math.floor(remaining % 60);
+                    idleCountdownSpan.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        function updateIdleDisplay() {
+            if (idleTimerBar) idleTimerBar.style.display = 'flex';
+        }
+
+        function autoLogout() {
+            if (!isLoggedIn) return;
+
+            sessionStorage.clear();
+            botTokenInput.value = '';
+            chatIdInput.value = '';
+            sendHistory = [];
+            renderHistory();
+            tokenHint.textContent = '';
+            chatIdHint.textContent = '';
+
+            if (cooldownInterval) clearInterval(cooldownInterval);
+            cooldownTimerDiv.classList.remove('show');
+            if (idleCountdownInterval) clearInterval(idleCountdownInterval);
+
+            isLoggedIn = false;
+            mainPage.style.display = 'none';
+            loginPage.style.display = 'flex';
+            loginPassword.value = '';
+            loginError.style.display = 'none';
+            idleTimerBar.style.display = 'none';
+        }
+
+        function recordActivity() {
+            if (isLoggedIn) resetIdleTimer();
+        }
+
+        function setupActivityListeners() {
+            const activityEvents = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+            activityEvents.forEach(event => {
+                document.addEventListener(event, recordActivity);
+            });
+        }
+
+        // ==================== 登录功能 ====================
+        function isLoginLocked() {
+            if (loginLockoutUntil > Date.now()) {
+                const remainingMinutes = Math.ceil((loginLockoutUntil - Date.now()) / 1000 / 60);
+                return { locked: true, message: `尝试次数过多，请 ${remainingMinutes} 分钟后重试` };
+            }
+            return { locked: false };
+        }
+
+        async function handleLogin() {
+            const lockCheck = isLoginLocked();
+            if (lockCheck.locked) {
+                loginError.textContent = lockCheck.message;
+                loginError.style.display = 'block';
+                return;
+            }
+
+            const password = loginPassword.value;
+            if (!password) {
+                loginError.textContent = '请输入密码';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            const inputHash = await sha256(password);
+
+            if (inputHash === LOGIN_PASSWORD_HASH) {
+                isLoggedIn = true;
+                loginFailedAttempts = 0;
+                loginLockoutUntil = 0;
+                loginError.style.display = 'none';
+                loginPassword.value = '';
+
+                loginPage.style.display = 'none';
+                mainPage.style.display = 'block';
+
+                loadSavedCredentials();
+                resetIdleTimer();
+            } else {
+                loginFailedAttempts++;
+                if (loginFailedAttempts >= MAX_LOGIN_ATTEMPTS) {
+                    loginLockoutUntil = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
+                    loginError.textContent = `密码错误次数过多，已锁定 ${LOCKOUT_MINUTES} 分钟`;
+                } else {
+                    loginError.textContent = `密码错误，还剩 ${MAX_LOGIN_ATTEMPTS - loginFailedAttempts} 次尝试机会`;
+                }
+                loginError.style.display = 'block';
+                loginPassword.value = '';
+                loginPassword.focus();
+            }
+        }
+
+        // ==================== sessionStorage 存储凭证 ====================
+        function loadSavedCredentials() {
+            const savedToken = sessionStorage.getItem('botToken');
+            const savedChatId = sessionStorage.getItem('chatId');
+
+            if (savedToken) {
+                botTokenInput.value = savedToken;
+                tokenHint.textContent = '✓ 已自动填充（关闭页面后清除）';
+            }
+            if (savedChatId) {
+                chatIdInput.value = savedChatId;
+                chatIdHint.textContent = '✓ 已自动填充（关闭页面后清除）';
+            }
+        }
+
+        function bindAutoSave() {
+            botTokenInput.addEventListener('input', () => {
+                if (botTokenInput.value.trim()) {
+                    sessionStorage.setItem('botToken', botTokenInput.value.trim());
+                    tokenHint.textContent = '✓ 已保存（关闭页面后清除）';
+                } else {
+                    sessionStorage.removeItem('botToken');
+                    tokenHint.textContent = '';
+                }
+                recordActivity();
+            });
+
+            chatIdInput.addEventListener('input', () => {
+                if (chatIdInput.value.trim()) {
+                    sessionStorage.setItem('chatId', chatIdInput.value.trim());
+                    chatIdHint.textContent = '✓ 已保存（关闭页面后清除）';
+                } else {
+                    sessionStorage.removeItem('chatId');
+                    chatIdHint.textContent = '';
+                }
+                recordActivity();
+            });
+        }
+
+        // ==================== 历史记录 ====================
+        function addToHistory(message, success, responseMsg) {
+            const historyItem = {
+                id: Date.now(),
+                time: new Date().toLocaleString('zh-CN'),
+                message: message.length > 80 ? message.substring(0, 80) + '...' : message,
+                success: success,
+                response: responseMsg
+            };
+            sendHistory.unshift(historyItem);
+            if (sendHistory.length > 50) sendHistory = sendHistory.slice(0, 50);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (!historyListDiv) return;
+            if (sendHistory.length === 0) {
+                historyListDiv.innerHTML = '<div style="color: #999; text-align: center; padding: 15px;">暂无发送记录</div>';
+                return;
+            }
+
+            let html = '';
+            sendHistory.forEach(item => {
+                const statusIcon = item.success ? '✅' : '❌';
+                html += `
+                    <div class="history-item">
+                        <div class="history-time">${statusIcon} ${item.time}</div>
+                        <div class="history-text">${escapeHtml(item.message)}</div>
+                        ${item.response ? `<div style="font-size: 10px; color: #666; margin-top: 3px;">📝 ${escapeHtml(item.response)}</div>` : ''}
+                    </div>
+                `;
+            });
+            historyListDiv.innerHTML = html;
+        }
+
+        function clearHistory() {
+            if (confirm('确定清空所有发送历史记录吗？')) {
+                sendHistory = [];
+                renderHistory();
+                showStatus('历史记录已清空', 'success');
+                recordActivity();
+            }
+        }
+
+        // ==================== 发送功能 ====================
+        function resetSendButton() {
+            sendBtn.disabled = false;
+            sendBtn.textContent = '🚀 发送计算';
+        }
+
+        function startCooldown() {
+            let remainingSeconds = RATE_LIMIT_SECONDS;
+            sendBtn.disabled = true;
+            cooldownTimerDiv.classList.add('show');
+            cooldownSecondsSpan.textContent = remainingSeconds;
+
+            if (cooldownInterval) clearInterval(cooldownInterval);
+
+            cooldownInterval = setInterval(() => {
+                remainingSeconds--;
+                cooldownSecondsSpan.textContent = remainingSeconds;
+                if (remainingSeconds <= 0) {
+                    clearInterval(cooldownInterval);
+                    cooldownInterval = null;
+                    cooldownTimerDiv.classList.remove('show');
+                    resetSendButton();
+                }
+            }, 1000);
+        }
+
+        function checkRateLimit() {
+            const now = Date.now();
+            const timeSinceLastSend = (now - lastSendTime) / 1000;
+            if (lastSendTime !== 0 && timeSinceLastSend < RATE_LIMIT_SECONDS) {
+                const remainingSeconds = Math.ceil(RATE_LIMIT_SECONDS - timeSinceLastSend);
+                return { allowed: false, message: `请等待 ${remainingSeconds} 秒后再试` };
+            }
+            return { allowed: true };
+        }
+
+        function showStatus(message, type) {
+            statusMsg.textContent = message;
+            statusMsg.className = `status ${type}`;
+            statusMsg.style.display = 'block';
+            setTimeout(() => {
+                statusMsg.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateCharCount() {
+            const count = messageInput.value.length;
+            charCountSpan.textContent = count;
+            charCountSpan.style.color = count > 4000 ? '#dc3545' : count > 3800 ? '#ff9800' : '#999';
+        }
+
+        function showConfirmModal(message, callback) {
+            const modal = document.createElement('div');
+            modal.className = 'confirm-modal';
+            modal.innerHTML = `
+                <div class="confirm-modal-content">
+                    <h3>📨 确认发送</h3>
+                    <p style="color: #666; font-size: 13px;">请确认以下计算内容：</p>
+                    <div class="message-preview">${escapeHtml(message)}</div>
+                    <div class="button-group">
+                        <button id="confirmSendBtn" class="btn-confirm">✅ 确认发送</button>
+                        <button id="cancelSendBtn" class="btn-cancel">❌ 取消</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const confirmBtn = modal.querySelector('#confirmSendBtn');
+            const cancelBtn = modal.querySelector('#cancelSendBtn');
+
+            confirmBtn.addEventListener('click', () => {
+                modal.remove();
+                callback(true);
+                recordActivity();
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                modal.remove();
+                callback(false);
+                recordActivity();
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                    callback(false);
+                }
+            });
+        }
+
+        async function sendMessage() {
+            recordActivity();
+
+            const message = messageInput.value.trim();
+            const botToken = botTokenInput.value.trim();
+            const chatId = chatIdInput.value.trim();
+
+            if (!message) {
+                showStatus('❌ 计算内容不能为空！', 'error');
+                messageInput.focus();
+                return;
+            }
+
+            if (!botToken) {
+                showStatus('请输入 Bot Token！', 'error');
+                botTokenInput.focus();
+                return;
+            }
+
+            if (!chatId) {
+                showStatus('请输入 Chat ID！', 'error');
+                chatIdInput.focus();
+                return;
+            }
+
+            const rateCheck = checkRateLimit();
+            if (!rateCheck.allowed) {
+                showStatus(rateCheck.message, 'error');
+                return;
+            }
+
+            showConfirmModal(message, async (confirmed) => {
+                if (!confirmed) {
+                    showStatus('❌ 已取消发送', 'warning');
+                    return;
+                }
+                await executeSend(message, botToken, chatId);
+            });
+        }
+
+        async function executeSend(message, botToken, chatId) {
+            sendBtn.disabled = true;
+            sendBtn.textContent = '⏳ 发送中...';
+
+            // 使用解码后的 API 地址
+            const apiUrl = getApiBase() + botToken + '/sendMessage';
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.ok) {
+                    lastSendTime = Date.now();
+                    showStatus('✅ 计算发送成功！', 'success');
+                    addToHistory(message, true, '发送成功');
+                    messageInput.value = '';
+                    updateCharCount();
+                    startCooldown();
+                    recordActivity();
+                } else {
+                    const errorMsg = result.description || '未知错误';
+                    showStatus(`❌ 发送失败：${errorMsg}`, 'error');
+                    addToHistory(message, false, errorMsg);
+                    resetSendButton();
+                }
+            } catch (error) {
+                showStatus(`❌ 网络错误：${error.message}`, 'error');
+                addToHistory(message, false, error.message);
+                resetSendButton();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== 页面关闭时清空所有数据 ====================
+        window.addEventListener('beforeunload', function () {
+            sendHistory = [];
+            if (cooldownInterval) clearInterval(cooldownInterval);
+            if (idleCountdownInterval) clearInterval(idleCountdownInterval);
+        });
+
+        // ==================== 初始化 ====================
+        function init() {
+            loginBtn.addEventListener('click', handleLogin);
+            loginPassword.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+
+            sendBtn.addEventListener('click', sendMessage);
+            clearHistoryBtn.addEventListener('click', clearHistory);
+            messageInput.addEventListener('input', updateCharCount);
+
+            messageInput.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!sendBtn.disabled && sendBtn.textContent !== '⏳ 发送中...') {
+                        sendMessage();
+                    }
+                }
+                recordActivity();
+            });
+
+            bindAutoSave();
+            setupActivityListeners();
+            updateCharCount();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
